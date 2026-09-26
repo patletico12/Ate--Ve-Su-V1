@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Ateş ve Su V2 - 2 Seviyeli Parkur</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none;
+        }
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #0d0d12;
+            color: #fff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+        }
+        #gameContainer {
+            position: relative;
+            width: 1000px;
+            height: 580px;
+            background-color: #161622;
+            border: 4px solid #2b2b3d;
+            border-radius: 12px;
+            box-shadow: 0 0 35px rgba(0, 0, 0, 0.9);
+        }
+        canvas {
+            background-color: #0f0f17;
+            display: block;
+            border-radius: 8px;
+        }
+        .ad-banner {
+            position: absolute;
+            top: 12px;
+            right: 15px;
+            background: rgba(13, 13, 18, 0.85);
+            border: 2px solid #00d2ff;
+            color: #00d2ff;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 14px;
+            box-shadow: 0 0 12px rgba(0, 210, 255, 0.3);
+            pointer-events: none;
+            z-index: 10;
+        }
+        .level-badge {
+            position: absolute;
+            top: 12px;
+            left: 15px;
+            background: rgba(13, 13, 18, 0.85);
+            border: 2px solid #ffa502;
+            color: #ffa502;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 14px;
+            pointer-events: none;
+            z-index: 10;
+        }
+        .controls-container {
+            position: absolute;
+            bottom: 15px;
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            padding: 0 25px;
+            box-sizing: border-box;
+            pointer-events: none;
+        }
+        .player-controls {
+            display: flex;
+            gap: 12px;
+            pointer-events: auto;
+        }
+        .btn {
+            width: 65px;
+            height: 65px;
+            background-color: rgba(255, 255, 255, 0.15);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            color: white;
+            font-size: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            outline: none;
+            backdrop-filter: blur(4px);
+        }
+        .btn:active {
+            background-color: rgba(255, 255, 255, 0.4);
+            transform: scale(0.95);
+        }
+        .red-btn {
+            border-color: #ff4757;
+            background-color: rgba(255, 71, 87, 0.25);
+            box-shadow: 0 0 10px rgba(255, 71, 87, 0.2);
+        }
+        .blue-btn {
+            border-color: #1e90ff;
+            background-color: rgba(30, 144, 255, 0.25);
+            box-shadow: 0 0 10px rgba(30, 144, 255, 0.2);
+        }
+        .overlay-card {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(15, 15, 25, 0.95);
+            padding: 30px 50px;
+            border-radius: 16px;
+            border: 2px solid #00d2ff;
+            text-align: center;
+            z-index: 20;
+            box-shadow: 0 0 30px rgba(0, 210, 255, 0.3);
+            max-width: 80%;
+        }
+        .overlay-card h2 {
+            margin: 0 0 10px 0;
+            color: #fff;
+            font-size: 28px;
+        }
+        .overlay-card p {
+            color: #aaa;
+            font-size: 16px;
+            margin-bottom: 20px;
+        }
+        .overlay-card button {
+            padding: 12px 28px;
+            font-size: 16px;
+            font-weight: bold;
+            background: linear-gradient(135deg, #2ed573, #1e90ff);
+            border: none;
+            color: white;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        #backBtn {
+            display: none;
+            position: absolute;
+            top: 60px;
+            left: 50%;
+            transform: translate(-50%, 0);
+            padding: 12px 25px;
+            font-size: 16px;
+            font-weight: bold;
+            background: #ff4757;
+            border: 2px solid #ff6b81;
+            color: white;
+            border-radius: 8px;
+            cursor: pointer;
+            z-index: 15;
+            box-shadow: 0 0 15px rgba(255, 71, 87, 0.4);
+        }
+        #backBtn:active {
+            transform: translate(-50%, 0) scale(0.95);
+        }
+    </style>
+</head>
+<body>
+
+<div id="gameContainer">
+    <div class="ad-banner">Github #patletico12</div>
+    <div class="level-badge" id="levelBadge">SEVİYE 1</div>
+    <canvas id="gameCanvas" width="1000" height="580"></canvas>
+
+    <div id="levelMessage" class="overlay-card">
+        <h2 id="msgTitle">LEVEL 1 COMPLETED!</h2>
+        <p id="msgSub">Awesome teamwork! Portals unlocked.</p>
+        <button id="msgBtn">Go to Level 2</button>
+    </div>
+
+    <button id="backBtn" onclick="backToLevel1()">◄ 1. Seviyeye Dön</button>
+
+    <!-- Dokunmatik Kontroller -->
+    <div class="controls-container">
+        <!-- Ateş (Kırmızı) - Solda -->
+        <div class="player-controls">
+            <div class="btn red-btn" id="redLeft">◄</div>
+            <div class="btn red-btn" id="redUp">▲</div>
+            <div class="btn red-btn" id="redRight">►</div>
+        </div>
+        <!-- Su (Mavi) - Sağda -->
+        <div class="player-controls">
+            <div class="btn blue-btn" id="blueLeft">◄</div>
+            <div class="btn blue-btn" id="blueUp">▲</div>
+            <div class="btn blue-btn" id="blueRight">►</div>
+        </div>
+    </div>
+</div>
+
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const levelBadge = document.getElementById('levelBadge');
+const msgBtn = document.getElementById('msgBtn');
+
+let currentLevel = 1;
+let time = 0;
+const keys = {};
+let portalAnim = 0;
+
+// Karakterler ve Başlangıç Konumları
+const p1 = { startX: 50, startY: 500, x: 50, y: 500, w: 26, h: 26, vx: 0, vy: 0, color: '#ff4757', grounded: false, jumpPressed: false, type: 'fire', standPlat: null };
+const p2 = { startX: 880, startY: 500, x: 880, y: 500, w: 26, h: 26, vx: 0, vy: 0, color: '#1e90ff', grounded: false, jumpPressed: false, type: 'water', standPlat: null };
+
+// Fizik Ayarları
+const gravity = 0.55;
+const jumpPower = -12.5;
+const speed = 4.3;
+
+// ================== SEVİYE 1 (biraz zorlaştırılmış) ==================
+const level1Platforms = [
+    { x: 0, y: 540, w: 1000, h: 40 }, // Ana Zemin
+    { x: 0, y: 430, w: 280, h: 16 },
+    { x: 360, y: 430, w: 280, h: 16 },
+    { x: 720, y: 430, w: 280, h: 16 },
+    { x: 100, y: 320, w: 300, h: 16 },
+    { x: 600, y: 320, w: 300, h: 16 },
+    { x: 0, y: 210, w: 220, h: 16 },
+    { x: 300, y: 210, w: 400, h: 16 },
+    { x: 780, y: 210, w: 220, h: 16 },
+    { x: 0, y: 100, w: 250, h: 16 },
+    { x: 750, y: 100, w: 250, h: 16 }
+];
+
+const level1Hazards = [
+    { x: 285, y: 535, w: 70, h: 10, type: 'fire', color: '#ff4757' },
+    { x: 645, y: 535, w: 70, h: 10, type: 'water', color: '#1e90ff' },
+    { x: 470, y: 535, w: 60, h: 10, type: 'acid', color: '#2ed573' },
+    { x: 480, y: 425, w: 40, h: 10, type: 'acid', color: '#2ed573' },
+    // YENİ: Kat1 kenar tuzakları
+    { x: 130, y: 425, w: 40, h: 10, type: 'water', color: '#1e90ff' },
+    { x: 830, y: 425, w: 40, h: 10, type: 'fire', color: '#ff4757' },
+    // YENİ: Kat2 küçük asit tuzakları geri eklendi
+    { x: 200, y: 315, w: 40, h: 10, type: 'acid', color: '#2ed573' },
+    { x: 750, y: 315, w: 40, h: 10, type: 'acid', color: '#2ed573' },
+    // YENİ: Kat3 kenar tuzakları
+    { x: 100, y: 205, w: 30, h: 10, type: 'fire', color: '#ff4757' },
+    { x: 850, y: 205, w: 30, h: 10, type: 'water', color: '#1e90ff' }
+];
+
+const level1Buttons = [ { x: 485, y: 202, w: 30, h: 8, pressed: false } ];
+const level1Gates = [ { x: 150, y: 0, w: 16, h: 100, active: true, btn: 0 } ];
+const level1Portals = [
+    { x: 80, y: 55, r: 24, color: '#ff4757' },
+    { x: 880, y: 55, r: 24, color: '#1e90ff' }
+];
+
+// ================== SEVİYE 2 (daha zor - hareketli platformlar, kolay atlanır geniş zeminler) ==================
+const level2Platforms = [
+    { x: 0, y: 540, w: 1000, h: 40 }, // Ana Zemin
+    // Kat1 (y:450) - genişletilmiş platformlar, kolay atlanır aralıklar
+    { x: 40, y: 450, w: 240, h: 16 },
+    { x: 380, y: 450, w: 240, h: 16 },
+    { x: 720, y: 450, w: 240, h: 16 },
+    // Kat2 (y:360)
+    { x: 90, y: 360, w: 200, h: 16 },
+    { x: 400, y: 360, w: 200, h: 16 },
+    { x: 710, y: 360, w: 200, h: 16 },
+    // Kat3 (y:270) - düğme platformu ortada
+    { x: 60, y: 270, w: 220, h: 16 },
+    { x: 390, y: 270, w: 220, h: 16 },
+    { x: 720, y: 270, w: 220, h: 16 },
+    // Kat4 (y:180) - sabit orta dinlenme platformu (hareketli platformlar ayrı dizide)
+    { x: 420, y: 180, w: 160, h: 16 },
+    // Kat5 (y:90) - çıkış platformları, genişletilmiş
+    { x: 0, y: 90, w: 240, h: 16 },
+    { x: 760, y: 90, w: 240, h: 16 }
+];
+
+// Hareketli platformlar: x0-x1 arasında yatay olarak gidip gelir, zeminlere daha yakın konumlandırıldı
+const level2MovingPlatforms = [
+    { x0: 40, x1: 240, y: 180, w: 110, h: 16, phase: 0, x: 40, dx: 0 },
+    { x0: 650, x1: 850, y: 180, w: 110, h: 16, phase: Math.PI, x: 850, dx: 0 }
+];
+
+const level2Hazards = [
+    // Zemin havuzları
+    { x: 230, y: 535, w: 70, h: 10, type: 'water', color: '#1e90ff' },
+    { x: 690, y: 535, w: 70, h: 10, type: 'fire', color: '#ff4757' },
+    { x: 460, y: 535, w: 80, h: 10, type: 'acid', color: '#2ed573' },
+    // Kat1 tuzakları
+    { x: 110, y: 445, w: 30, h: 10, type: 'fire', color: '#ff4757' },
+    { x: 470, y: 445, w: 30, h: 10, type: 'water', color: '#1e90ff' },
+    { x: 800, y: 445, w: 30, h: 10, type: 'acid', color: '#2ed573' },
+    // Kat2 tuzakları
+    { x: 150, y: 355, w: 30, h: 10, type: 'acid', color: '#2ed573' },
+    { x: 470, y: 355, w: 30, h: 10, type: 'fire', color: '#ff4757' },
+    { x: 770, y: 355, w: 30, h: 10, type: 'water', color: '#1e90ff' },
+    // Kat3 kenar tuzakları (orta düğme platformu güvende bırakıldı)
+    { x: 140, y: 265, w: 30, h: 10, type: 'water', color: '#1e90ff' },
+    { x: 780, y: 265, w: 30, h: 10, type: 'fire', color: '#ff4757' }
+];
+
+const level2Buttons = [ { x: 485, y: 172, w: 30, h: 8, pressed: false } ]; // Kat4 orta platformda
+// Kapı düzenlemesi: gate artık Kat5 çıkış platformlarının HER İKİ girişini de kilitliyor,
+// böylece düğmeye basmadan hareketli platformlarla kenardan dolanıp geçmek mümkün değil.
+const level2Gates = [
+    { x: 225, y: 90, w: 16, h: 100, active: true, btn: 0 },
+    { x: 755, y: 90, w: 16, h: 100, active: true, btn: 0 }
+];
+const level2Portals = [
+    { x: 120, y: 45, r: 24, color: '#ff4757' },
+    { x: 880, y: 45, r: 24, color: '#1e90ff' }
+];
+
+const LEVELS = {
+    1: {
+        platforms: level1Platforms,
+        hazards: level1Hazards,
+        buttons: level1Buttons,
+        gates: level1Gates,
+        movingPlatforms: [],
+        portals: level1Portals,
+        badge: 'SEVİYE 1',
+        completeTitle: 'SEVİYE 1 TAMAMLANDI!',
+        completeSub: 'Harika takım çalışması! Portallar açıldı.',
+        completeBtnText: '2. Seviyeye Geç ►',
+        onComplete: 'level2'
+    },
+    2: {
+        platforms: level2Platforms,
+        hazards: level2Hazards,
+        buttons: level2Buttons,
+        gates: level2Gates,
+        movingPlatforms: level2MovingPlatforms,
+        portals: level2Portals,
+        badge: 'SEVİYE 2 (ZOR)',
+        completeTitle: 'SEVİYE 2 TAMAMLANDI!',
+        completeSub: 'Muhteşem! Hareketli platformları da geçtiniz.',
+        completeBtnText: '3. Seviyeye Geç ►',
+        onComplete: 'level3'
+    }
+};
+
+function bindTouch(id, keyName) {
+    const btn = document.getElementById(id);
+    const start = (e) => { e.preventDefault(); keys[keyName] = true; };
+    const end = (e) => { e.preventDefault(); keys[keyName] = false; };
+
+    btn.addEventListener('touchstart', start, {passive: false});
+    btn.addEventListener('touchend', end, {passive: false});
+    btn.addEventListener('mousedown', start);
+    btn.addEventListener('mouseup', end);
+}
+
+bindTouch('redLeft', 'a');
+bindTouch('redUp', 'w');
+bindTouch('redRight', 'd');
+
+bindTouch('blueLeft', 'ArrowLeft');
+bindTouch('blueUp', 'ArrowUp');
+bindTouch('blueRight', 'ArrowRight');
+
+window.addEventListener('keydown', e => { keys[e.key] = true; });
+window.addEventListener('keyup', e => { keys[e.key] = false; });
+
+function resetP1() {
+    p1.x = p1.startX; p1.y = p1.startY; p1.vx = 0; p1.vy = 0; p1.standPlat = null;
+}
+function resetP2() {
+    p2.x = p2.startX; p2.y = p2.startY; p2.vx = 0; p2.vy = 0; p2.standPlat = null;
+}
+
+function resetLevelState(n){
+    const lvl = LEVELS[n];
+    lvl.buttons.forEach(b => b.pressed = false);
+    lvl.gates.forEach(g => g.active = true);
+}
+
+function updateMovingPlatforms(mps){
+    mps.forEach(mp=>{
+        const oldX = mp.x;
+        const t = 0.5 + 0.5*Math.sin(time*0.02 + mp.phase);
+        mp.x = mp.x0 + (mp.x1-mp.x0)*t;
+        mp.dx = mp.x - oldX;
+    });
+}
+
+function updatePlayer(p, leftKey, rightKey, upKey, lvl) {
+    if (keys[leftKey]) p.vx = -speed;
+    else if (keys[rightKey]) p.vx = speed;
+    else p.vx = 0;
+
+    if (keys[upKey]) {
+        if (p.grounded && !p.jumpPressed) {
+            p.vy = jumpPower;
+            p.grounded = false;
+            p.jumpPressed = true;
+        }
+    } else {
+        p.jumpPressed = false;
+    }
+
+    p.vy += gravity;
+    p.x += p.vx;
+    p.y += p.vy;
+
+    p.grounded = false;
+    p.standPlat = null;
+
+    const allPlats = lvl.platforms.concat(lvl.movingPlatforms);
+    for (let plat of allPlats) {
+        if (p.x < plat.x + plat.w &&
+            p.x + p.w > plat.x &&
+            p.y < plat.y + plat.h &&
+            p.y + p.h > plat.y) {
+
+            if (p.vy > 0 && (p.y + p.h - p.vy) <= plat.y + 8) {
+                p.y = plat.y - p.h;
+                p.vy = 0;
+                p.grounded = true;
+                p.standPlat = plat;
+            }
+            else if (p.vy < 0 && (p.y - p.vy) >= plat.y + plat.h - 8) {
+                p.y = plat.y + plat.h;
+                p.vy = 0;
+            }
+        }
+    }
+
+    // Hareketli platformla birlikte taşınma
+    if (p.grounded && p.standPlat && typeof p.standPlat.dx === 'number') {
+        p.x += p.standPlat.dx;
+    }
+
+    // Kapı Engelleri
+    for (let gate of lvl.gates) {
+        if (gate.active) {
+            if (p.x < gate.x + gate.w && p.x + p.w > gate.x &&
+                p.y < gate.y + gate.h && p.y + p.h > gate.y) {
+                if (p.vx > 0) p.x = gate.x - p.w;
+                if (p.vx < 0) p.x = gate.x + gate.w;
+            }
+        }
+    }
+
+    // Tuzak Kontrolü
+    for (let h of lvl.hazards) {
+        if (p.x < h.x + h.w && p.x + p.w > h.x &&
+            p.y < h.y + h.h && p.y + p.h > h.y) {
+            if (h.type === 'acid' || (h.type === 'fire' && p.type === 'water') || (h.type === 'water' && p.type === 'fire')) {
+                if (p === p1) resetP1();
+                else resetP2();
+            }
+        }
+    }
+
+    if (p.x < 0) p.x = 0;
+    if (p.x + p.w > canvas.width) p.x = canvas.width - p.w;
+}
+
+function checkMechanics(lvl) {
+    lvl.buttons.forEach((btn) => {
+        let p1On = (p1.x < btn.x + btn.w && p1.x + p1.w > btn.x && p1.y + p1.h >= btn.y && p1.y + p1.h <= btn.y + 12);
+        let p2On = (p2.x < btn.x + btn.w && p2.x + p2.w > btn.x && p2.y + p2.h >= btn.y && p2.y + p2.h <= btn.y + 12);
+        btn.pressed = p1On || p2On;
+    });
+    lvl.gates.forEach((gate) => {
+        const btn = lvl.buttons[gate.btn] !== undefined ? lvl.buttons[gate.btn] : lvl.buttons[0];
+        if (btn) gate.active = !btn.pressed;
+    });
+
+    let p1In = Math.hypot((p1.x + p1.w/2) - lvl.portals[0].x, (p1.y + p1.h/2) - lvl.portals[0].y) < 35;
+    let p2In = Math.hypot((p2.x + p2.w/2) - lvl.portals[1].x, (p2.y + p2.h/2) - lvl.portals[1].y) < 35;
+
+    if (p1In && p2In) {
+        document.getElementById('msgTitle').innerText = lvl.completeTitle;
+        document.getElementById('msgSub').innerText = lvl.completeSub;
+        msgBtn.innerText = lvl.completeBtnText;
+        msgBtn.onclick = lvl.onComplete === 'level3' ? goToLevel3 : (lvl.onComplete === 'restart' ? restartGame : nextLevel);
+        document.getElementById('levelMessage').style.display = 'block';
+    }
+}
+
+function goToLevel3() {
+    currentLevel = 3;
+    document.getElementById('levelMessage').style.display = 'none';
+    document.getElementById('backBtn').style.display = 'block';
+    levelBadge.textContent = 'SEVİYE 3 (YAKINDA)';
+}
+
+function nextLevel() {
+    currentLevel = 2;
+    resetLevelState(2);
+    resetP1();
+    resetP2();
+    document.getElementById('levelMessage').style.display = 'none';
+    document.getElementById('backBtn').style.display = 'block';
+    levelBadge.textContent = LEVELS[2].badge;
+}
+
+function backToLevel1() {
+    currentLevel = 1;
+    resetLevelState(1);
+    resetP1();
+    resetP2();
+    document.getElementById('backBtn').style.display = 'none';
+    document.getElementById('levelMessage').style.display = 'none';
+    levelBadge.textContent = LEVELS[1].badge;
+}
+
+function restartGame() {
+    currentLevel = 1;
+    resetLevelState(1);
+    resetLevelState(2);
+    resetP1();
+    resetP2();
+    document.getElementById('backBtn').style.display = 'none';
+    document.getElementById('levelMessage').style.display = 'none';
+    levelBadge.textContent = LEVELS[1].badge;
+}
+
+function drawPortals(portalsArr) {
+    portalAnim += 0.05;
+    for (let p of portalsArr) {
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.beginPath();
+        ctx.arc(0, 0, p.r + Math.sin(portalAnim) * 3, 0, Math.PI * 2);
+        ctx.strokeStyle = p.color;
+        ctx.lineWidth = 4;
+        ctx.shadowColor = p.color;
+        ctx.shadowBlur = 15;
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.arc(0, 0, p.r - 8, 0, Math.PI * 2);
+        ctx.fillStyle = p.color + '66';
+        ctx.fill();
+        ctx.restore();
+    }
+}
+
+function drawLevel(lvl) {
+    // Sabit platformlar
+    ctx.fillStyle = '#2b2b3d';
+    for (let plat of lvl.platforms) {
+        ctx.fillRect(plat.x, plat.y, plat.w, plat.h);
+    }
+
+    // Hareketli platformlar (farklı renk + parıltı ile ayırt edilir)
+    if (lvl.movingPlatforms.length) {
+        for (let mp of lvl.movingPlatforms) {
+            ctx.save();
+            ctx.fillStyle = '#4a4a72';
+            ctx.shadowColor = '#8888ff';
+            ctx.shadowBlur = 12;
+            ctx.fillRect(mp.x, mp.y, mp.w, mp.h);
+            ctx.restore();
+        }
+    }
+
+    // Tuzaklar
+    for (let h of lvl.hazards) {
+        ctx.fillStyle = h.color;
+        ctx.shadowColor = h.color;
+        ctx.shadowBlur = 8;
+        ctx.fillRect(h.x, h.y, h.w, h.h);
+    }
+    ctx.shadowBlur = 0;
+
+    // Düğmeler
+    for (let btn of lvl.buttons) {
+        ctx.fillStyle = btn.pressed ? '#eccc68' : '#ffa502';
+        ctx.fillRect(btn.x, btn.y + (btn.pressed ? 4 : 0), btn.w, btn.h - (btn.pressed ? 4 : 0));
+    }
+
+    // Kapılar
+    for (let gate of lvl.gates) {
+        if (gate.active) {
+            ctx.fillStyle = '#ffa502';
+            ctx.shadowColor = '#ffa502';
+            ctx.shadowBlur = 10;
+            ctx.fillRect(gate.x, gate.y, gate.w, gate.h);
+            ctx.shadowBlur = 0;
+        }
+    }
+
+    drawPortals(lvl.portals);
+
+    // Karakterler
+    ctx.fillStyle = p1.color;
+    ctx.shadowColor = p1.color;
+    ctx.shadowBlur = 10;
+    ctx.fillRect(p1.x, p1.y, p1.w, p1.h);
+
+    ctx.fillStyle = p2.color;
+    ctx.shadowColor = p2.color;
+    ctx.shadowBlur = 10;
+    ctx.fillRect(p2.x, p2.y, p2.w, p2.h);
+    ctx.shadowBlur = 0;
+}
+
+function gameLoop() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    time++;
+
+    if (currentLevel === 3) {
+        ctx.textAlign = 'center';
+        ctx.font = 'bold 46px Arial';
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText("SEVİYE 3", canvas.width / 2, canvas.height / 2 - 60);
+
+        ctx.font = 'bold 30px Arial';
+        ctx.fillStyle = '#00d2ff';
+        ctx.shadowColor = '#00d2ff';
+        ctx.shadowBlur = 15;
+        ctx.fillText("Coming Soon..", canvas.width / 2, canvas.height / 2 - 5);
+        ctx.shadowBlur = 0;
+
+        requestAnimationFrame(gameLoop);
+        return;
+    }
+
+    const lvl = LEVELS[currentLevel];
+    if (lvl.movingPlatforms.length) updateMovingPlatforms(lvl.movingPlatforms);
+
+    updatePlayer(p1, 'a', 'd', 'w', lvl);
+    updatePlayer(p2, 'ArrowLeft', 'ArrowRight', 'ArrowUp', lvl);
+    checkMechanics(lvl);
+    drawLevel(lvl);
+
+    requestAnimationFrame(gameLoop);
+}
+
+gameLoop();
+</script>
+
+</body>
+</html>
